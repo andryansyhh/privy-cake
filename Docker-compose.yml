@@ -1,0 +1,55 @@
+version: '3.9'
+services:
+  app:
+    container_name: golang_container
+    environment:
+      - MYSQL_ROOT_HOST=${DATABASE_HOST} 
+      - MYSQL_USER=${USER}
+      - MYSQL_PASSWORD=${PASSWORD}
+      - MYSQL_DATABASE=${DB}
+      - MYSQL_ROOT_PASSWORD=${PASSWORD}
+    tty: true
+    build: .
+    ports:
+      - 8080:8080
+    restart: on-failure
+    volumes:
+      - .:/app
+    depends_on:
+      - mysqldb
+    networks:
+      - privy
+
+  mysqldb:
+    image: mysql:latest
+    container_name: mysql_privy
+    environment:
+      - MYSQL_ROOT_HOST=${DATABASE_HOST} 
+      - MYSQL_USER=${USERNAME}
+      - MYSQL_PASSWORD=${PASSWORD}
+      - MYSQL_DATABASE=${DB}
+      - MYSQL_ROOT_PASSWORD=${PASSWORD}
+    ports:
+      - '3306:3306'
+    networks:
+      - privy
+    volumes:
+      - ./schema:/docker-entrypoint-initdb.d
+      - /var/lib/mysql
+
+  migrate:
+    image: migrate/migrate
+    volumes:
+      - ./migration
+    command: ["-path", "/migration", "-database",  "mysql://ryan:satuDua3@tcp(mysqldb)/local?parseTime=true", "up", "3"]
+    links: 
+      - mysqldb
+    depends_on:
+      - mysqldb
+    networks:
+      - privy
+
+# Networks to be created to facilitate communication between containers
+networks:
+  privy:
+    driver: bridge
